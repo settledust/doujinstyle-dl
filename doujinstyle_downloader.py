@@ -3,14 +3,14 @@
 # ==============================================================================
 # 1. Python 版本: 3.6+
 # 2. 依赖库: pip install requests beautifulsoup4 lxml
-# 3. 功能：根据关键词全自动抓取 doujinstyle 网盘链接，支持 Session 复用、跨平台自适应路径与智能命名。
-#    Function: Automatically crawl download links from doujinstyle based on keywords, 
-#    supporting session reuse, cross-platform path adaptation, and smart naming.
+# 3. 功能：根据关键词全自动抓取 doujinstyle 网盘链接，支持 Mega, Mediafire, GD, PixelDrain。
+#    Function: Automatically crawl download links from doujinstyle based on keywords,
+#    supporting Mega, Mediafire, Google Drive, and PixelDrain.
 # ==============================================================================
 
 import requests
 from bs4 import BeautifulSoup
-import re 
+import re
 import os
 import time
 import urllib.parse
@@ -22,14 +22,14 @@ import urllib.parse
 
 # 【目标配置】只需输入 doujinstyle 的展会标签关键字 (对应 URL 中的 result= 参数)。
 # [Target Configuration] Just input the exhibition tag keyword (corresponds to result= parameter in URL).
-# 
+#
 # 示例：春例22为rts22，秋例10为arts10，m3-2024春为m3-53，C104为c104，C106东方Project为c106%20touhou)
 # Keyword example: 第二十二回博麗神社例大祭=rts22，第十回博麗神社秋季例大祭=arts10，m3-2024春=m3-53，C104=c104，C106東方Project=c106%20touhou
-# 
+#
 # 脚本会自动处理 URL 编码（如 %20）并生成对应的文件夹名
 # The script automatically handles URL encoding and generates safe filenames.
 
-RESULT_KEYWORD = 'c107%20touhou'
+RESULT_KEYWORD = "c107%20touhou"
 
 # ==============================================================================
 #                      ⚙️ 自动化逻辑处理 (底层核心，无需修改) ⚙️
@@ -47,7 +47,7 @@ decoded_name = urllib.parse.unquote(RESULT_KEYWORD)
 
 # re.sub: 使用正则表达式将 Windows/Linux 不允许的文件名特殊字符替换为下划线
 # Replace invalid filename characters for Win/Linux with underscores.
-safe_name = re.sub(r'[\\/*?:"<>| ]', '_', decoded_name)
+safe_name = re.sub(r'[\\/*?:"<>| ]', "_", decoded_name)
 OUTPUT_FILENAME = f"links_{safe_name}.txt"
 
 # txt文件将直接生成在脚本同一目录，跨平台且彻底解决 Windows 桌面路径迁移导致的报错
@@ -59,24 +59,26 @@ OUTPUT_FILE_PATH = os.path.join(current_dir, OUTPUT_FILENAME)
 # Session 的核心作用是实现 TCP 连接复用（Keep-Alive），在大规模请求时能提升 50% 以上的速度
 # Sessions implement TCP Keep-Alive, boosting speed by 50%+ during large requests.
 session = requests.Session()
-session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Referer': "https://doujinstyle.com/", 
-})
+session.headers.update(
+    {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://doujinstyle.com/",
+    }
+)
 
 # 4. 【常量配置】
 # [Constants Configuration]
 BASE_URL = "https://doujinstyle.com/"
 SEARCH_URL_TEMPLATE = "https://doujinstyle.com/?p=search&source=1&type=blanket&result={result_key}&page={page_num}"
 
-# 存储容器：使用 set 确保所有链接天然去重
-# Storage: Use a set to ensure unique download links.
+# 存储容器 (Storage Container)
 all_download_links = set()
 
 # ==============================================================================
 #                            ⬇️ 核心功能函数 ⬇️
 #                            ⬇️ Core Functions ⬇️
 # ==============================================================================
+
 
 def get_all_file_ids(result_key):
     """
@@ -89,7 +91,7 @@ def get_all_file_ids(result_key):
        (Stop paging when no new IDs are found or content repeats.)
     """
     unique_ids = set()
-    link_pattern = re.compile(r'\?p=page&type=1&id=(\d+)') # 匹配专辑 ID 的正则 (Regex for Album IDs)
+    link_pattern = re.compile(r"\?p=page&type=1&id=(\d+)")
     current_page, previous_page_ids, max_duplicate_checks = 0, set(), 2
 
     print(f"--- 🔍 正在检索结果 (Searching): {urllib.parse.unquote(result_key)} ---")
@@ -101,38 +103,42 @@ def get_all_file_ids(result_key):
             # 发送 GET 请求获取搜索页面内容 (Send GET request)
             response = session.get(url, timeout=15)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
-            
-            # ✨ 核心策略：精准锁定主体区域。
-            # Core Strategy: Target the main content area specifically.
-            mainbar = soup.find('mainbar')
-            target_area = mainbar if mainbar else soup # 容错处理 (Fallback)
-            
-            for a_tag in target_area.find_all('a', href=True):
-                href = a_tag['href']
-                if '?p=page&type=1&id=' in href:
+            soup = BeautifulSoup(response.text, "lxml")
+
+            mainbar = soup.find("mainbar")
+            target_area = mainbar if mainbar else soup
+
+            for a_tag in target_area.find_all("a", href=True):
+                href = a_tag["href"]
+                if "?p=page&type=1&id=" in href:
                     match = link_pattern.search(href)
                     if match:
                         current_page_ids.add(match.group(1))
 
-            # 翻页终止判定 (Paging termination logic)
-            if not current_page_ids or (current_page > 0 and current_page_ids == previous_page_ids):
+            if not current_page_ids or (
+                current_page > 0 and current_page_ids == previous_page_ids
+            ):
                 max_duplicate_checks -= 1
-                if max_duplicate_checks == 0: break
-            
+                if max_duplicate_checks == 0:
+                    break
+
             if current_page_ids:
                 unique_ids.update(current_page_ids)
-                print(f"  -> 页面 {current_page}: 成功提取 {len(current_page_ids)} 个专辑 ID")
-            
+                print(
+                    f"  -> 页面 {current_page}: 成功提取 {len(current_page_ids)} 个专辑 ID"
+                )
+
             previous_page_ids = current_page_ids
             current_page += 1
-            time.sleep(0.3) # 礼貌间歇 (Polite delay)
+            time.sleep(0.3)
 
         except Exception as e:
-            print(f"  [Error] 访问第 {current_page} 页时发生异常: {e}"); break
-            
+            print(f"  [Error] 访问第 {current_page} 页时发生异常: {e}")
+            break
+
     print(f"--- ✅ 检索完成，共找到 {len(unique_ids)} 个结果。 ---")
     return sorted(list(unique_ids))
+
 
 # ==============================================================================
 #                            ⬇️ 脚本主执行流程 ⬇️
@@ -141,56 +147,87 @@ def get_all_file_ids(result_key):
 
 if __name__ == "__main__":
     start_time = time.time()
-    
+
     # 步骤 1: 获取所有唯一的专辑 ID (Step 1: Get all unique Album IDs)
     FILE_IDS = get_all_file_ids(RESULT_KEYWORD)
 
     if not FILE_IDS:
-        print("未发现任何匹配的 ID，请确认 RESULT_KEYWORD。 (No IDs found, check keyword.)")
+        print("未发现任何匹配的 ID，请确认 RESULT_KEYWORD。")
     else:
         # 步骤 2: 遍历 ID，模拟点击“Download”按钮获取网盘真实链接
         # Step 2: Traverse IDs, simulate "Download" click to get direct links.
         print(f"--- 📡 正在解析原始下载链接 (解析模式: 连接复用) ---")
-        
+
         for index, file_id in enumerate(FILE_IDS, 1):
-            # payload 模拟了点击下载按钮时发送的 POST 数据 (Simulate POST data)
-            payload = {'type': '1', 'id': file_id, 'source': '0', 'download_link': 'Download'}
+            payload = {
+                "type": "1",
+                "id": file_id,
+                "source": "0",
+                "download_link": "Download",
+            }
             try:
-                # allow_redirects=False 非常重要！网盘链接在 Location 响应头中。
-                # Crucial: disable redirects to catch the link in the Location header.
-                response = session.post(BASE_URL, data=payload, allow_redirects=False, timeout=20)
-                
-                # 检查是否发生重定向 (Check for redirects 301-307)
+                response = session.post(
+                    BASE_URL, data=payload, allow_redirects=False, timeout=20
+                )
                 if response.status_code in [301, 302, 303, 307]:
-                    link = response.headers.get('Location')
-                    # 过滤逻辑：只保留常见的网盘链接 (Filtering: keep common hosts)
-                    if link and any(host in link for host in ['mega.nz', 'mediafire.com', 'drive.google.com']):
-                        print(f"  [{index}/{len(FILE_IDS)}] ID {file_id} -> 链接捕获成功")
+                    link = response.headers.get("Location")
+
+                    # ✨ 核心改进：增加 PixelDrain 支持 (Added PixelDrain support)
+                    valid_hosts = [
+                        "mega.nz",
+                        "mediafire.com",
+                        "drive.google.com",
+                        "pixeldrain.com",
+                    ]
+
+                    if link and any(host in link for host in valid_hosts):
+                        print(
+                            f"  [{index}/{len(FILE_IDS)}] ID {file_id} -> 链接捕获成功"
+                        )
                         all_download_links.add(link)
                 else:
-                    print(f"  [{index}/{len(FILE_IDS)}] ID {file_id} -> 未发现重定向链接")
-            except Exception: 
+                    print(
+                        f"  [{index}/{len(FILE_IDS)}] ID {file_id} -> 未发现重定向链接"
+                    )
+            except Exception:
                 continue
 
         # 步骤 3: 汇总结果并输出 (Step 3: Summarize and Output)
         if all_download_links:
-            # 简单的数据分布统计 (Statistics distribution)
+            # ✨ 统计数据增加 PixelDrain 项 (Added PixelDrain to stats)
             stats = {
-                'Mega': sum(1 for k in all_download_links if 'mega.nz' in k),
-                'Mediafire': sum(1 for k in all_download_links if 'mediafire.com' in k),
-                'GoogleDrive': sum(1 for k in all_download_links if 'drive.google.com' in k)
+                "Mega": sum(1 for k in all_download_links if "mega.nz" in k),
+                "Mediafire": sum(1 for k in all_download_links if "mediafire.com" in k),
+                "GoogleDrive": sum(
+                    1 for k in all_download_links if "drive.google.com" in k
+                ),
+                "PixelDrain": sum(
+                    1 for k in all_download_links if "pixeldrain.com" in k
+                ),
             }
-            
-            # 将 set 转为排序列表并保存 (Sort and save results)
-            with open(OUTPUT_FILE_PATH, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(sorted(list(all_download_links))))
-            
-            # 打印任务报告 (Print Task Report)
-            print(f"\n" + "="*55)
+
+            with open(OUTPUT_FILE_PATH, "w", encoding="utf-8") as f:
+                f.write("\n".join(sorted(list(all_download_links))))
+
+            print(f"\n" + "=" * 55)
             print(f"🎉 任务完成 (Success)! 总耗时: {time.time() - start_time:.1f}s")
-            print(f"📁 文件名 (File): {OUTPUT_FILENAME}")
-            print(f"📊 分布 (Stats): Mega({stats['Mega']}), Mediafire({stats['Mediafire']}), GD({stats['GoogleDrive']})")
+            print(
+                f"📊 分布 (Stats): Mega({stats['Mega']}), Mediafire({stats['Mediafire']}), GD({stats['GoogleDrive']}), PD({stats['PixelDrain']})"
+            )
             print(f"🔗 有效链接总数 (Total Links): {len(all_download_links)}")
-            print("="*55)
+            print("=" * 55)
         else:
-            print("\n❌ 结束，未提取到任何有效的链接。 (End, no valid links found.)")
+            print("\n❌ 结束，未提取到任何有效的链接。")
+
+# ==============================================================================
+#                      📌 v1.0.1 新增：绝对路径输出提示 📌
+#                      📌 v1.0.1 New: Absolute Path Output Hint 📌
+# ==============================================================================
+try:
+    if "OUTPUT_FILE_PATH" in locals() or "OUTPUT_FILE_PATH" in globals():
+        if os.path.exists(OUTPUT_FILE_PATH):
+            print(f"📂 结果文件保存至 (Absolute Path):")
+            print(f"👉 {os.path.abspath(OUTPUT_FILE_PATH)}")
+            print("=" * 55 + "\n")
+except NameError:
+    pass
