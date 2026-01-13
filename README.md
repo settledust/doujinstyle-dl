@@ -13,8 +13,8 @@
 
 ### 功能特性
 - **Session 复用**：支持 TCP 连接复用，在大规模抓取时效率提升 50% 以上。
-- **智能重定向**：自动解析并捕获 Mega、Mediafire、Google Drive 的真实跳转链接。
-- **跨平台自适应**：支持 Windows/Linux 路径，自动处理非法字符并生成安全文件名。
+- **智能重定向**：自动解析并捕获 Mega、Mediafire、Google Drive 等网盘的真实跳转链接。
+- **跨平台自适应**：支持 Windows/Linux/MacOS 路径，自动处理非法字符并生成安全文件名。
 
 ### 如何使用
 1. 安装依赖：`pip install requests beautifulsoup4 lxml`
@@ -33,8 +33,8 @@
 
 ### Features
 - **Session Reuse**: Implements TCP Keep-Alive for a 50%+ speed boost during large requests.
-- **Smart Redirection**: Automatically catches `Location` headers for Mega, Mediafire, and Google Drive links.
-- **Cross-platform**: Handles URL decoding and safe filenames for both Windows and Linux.
+- **Smart Redirection**: Automatically catches `Location` headers for Mega, Mediafire, Google Drive links, etc.
+- **Cross-platform**: Handles URL decoding and safe filenames for Windows/Linux/MacOS.
 
 ### Usage
 1. Install dependencies: `pip install requests beautifulsoup4 lxml`
